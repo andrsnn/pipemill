@@ -1,0 +1,1 @@
+{"pipelines":{"last":true,"splitAndTrim":true,"trim":true,"map":true,"columns":true,"split":true,"filter":true,"join":true,"splitNewLine":true,"subPipe":true,"columnAt":true,"runInContext":true,"reducePredicate":true}}
