@@ -1,0 +1,1 @@
+module.exports = ["fs.readFile($0, \nfunction (err, file) {\nif (err) {return done(err);} file = file.toString(); eval(file); \n});"]

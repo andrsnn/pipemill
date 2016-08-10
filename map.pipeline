@@ -1,0 +1,1 @@
+module.exports = ["return stdin.map(function(item){return $0});"]
