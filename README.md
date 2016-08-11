@@ -1,6 +1,6 @@
 # pipemill
 
-Pipemill is a cli utility for manipulating process streams with JavaScript.  Pipemill is akin to [pjs](https://github.com/danielstjules/pjs) but gives a complete degree of control over what code is evaluated in the context of the stream.
+Pipemill is a cli utility for manipulating process streams with JavaScript.  Pipemill is akin to pjs but gives a complete degree of control over what code is evaluated in the context of the stream.
 
 Like UNIX streams pipemill chains the process stdin between a series of JavaScript pipeline expressions.
 
@@ -26,9 +26,9 @@ ls -tlr | pipemill -p 'return stdin.split("\n")' \
     ]
 ```
 ``` bash
-# save your javascript pipeline and reuse by passing in an expression
+# save your javascript pipeline with an argument and reuse by passing in an expression
 pipemill -p 'return stdin.split("\n")' \
-    -p 'return _.filter(stdin, function (item){return ~item.indexOf("package")});' --save filter
+    -p 'return _.filter(stdin, function (item){return ~item.indexOf($0)});' --save filter
 ls -tlr | pipemill -p 'pipelines.filter("package")'
 ````
 ```javascript
