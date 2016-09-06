@@ -1,1 +1,0 @@
-module.exports = ["pipelines.split(\" \")","pipelines.map(item.trim())","pipelines.filter(Boolean(item))"]
