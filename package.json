@@ -13,6 +13,7 @@
     "commander": "2.9.0",
     "escodegen": "1.8.1",
     "esprima": "2.7.2",
+    "js-beautify": "^1.6.4",
     "lodash": "4.14.1"
   },
   "engines": {
