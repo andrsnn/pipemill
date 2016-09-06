@@ -1,1 +1,1 @@
-{"pipelines":{"last":true,"splitAndTrim":true,"trim":true,"map":true,"columns":true,"split":true,"filter":true,"join":true,"splitNewLine":true,"subPipe":true,"columnAt":true,"runInContext":true,"reducePredicate":true}}
+{"pipelines":{"join":true,"split":true,"filter":true,"tester":true,"another":true,"filterRecursive":true,"columnAt":true},"aliases":{"split":{"short":"s","long":"split"},"filter":{"short":"f","long":"filter"},"join":{"short":"j","long":"join"},"tester":{"short":"t","long":"tester"},"filterRecursive":{"long":"fr"}}}

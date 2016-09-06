@@ -1,1 +1,0 @@
-module.exports = ["pipelines.splitNewLine()","pipelines.filter(Boolean(item))","return _.last(stdin);"]

@@ -4,12 +4,46 @@ var _ = require('lodash');
 var esprima = require('esprima');
 var escodegen = require('escodegen');
 
+var ARGUMENTS_REGEX = /\$\d/g;
+var PATH_TO_PIPELINES = path.resolve(__dirname, 'pipelines');
+
+module.exports.applyArguments = function (pipelines, pipeline, args) {
+    var hasProvidedArgs = args && args.length;
+
+    if (hasProvidedArgs) {
+        args = _.map(args, function (arg) {
+            return module.exports.resolve(arg, pipelines);
+        });
+    }
+
+    pipeline = _.flattenDeep(pipeline);
+
+    pipeline = _.map(pipeline, function (pipe) {
+        pipe = typeof pipe === 'function' ? pipe.toString() : pipe;
+        var pipelineArguments = pipe && pipe.match && pipe.match(ARGUMENTS_REGEX);
+        var numberOfPipelineArgs = (pipelineArguments && pipelineArguments.length) || 0;
+
+        for (var i = 0; i <= numberOfPipelineArgs; i++) {
+            var argIndex = '$' + i;
+            var arg = args[i] || undefined;
+            pipe = pipe && pipe.replace ?
+                pipe.replace(new RegExp('\\' + argIndex, 'g'), arg) :
+                pipe;
+        }
+
+        return pipe;
+    });
+
+    return pipeline;
+};
+
 module.exports.resolve = function (code, pipelines) {
     var output = [];
 
     if (code.indexOf('pipelines.') === -1) {
         return code;
     }
+
     var ast = esprima.parse(code);
 
     function resolveSubPipelines(pipelineStr, pipeline) {
@@ -29,26 +63,15 @@ module.exports.resolve = function (code, pipelines) {
 
     function parsePipeline(nodes, key, name, args) {
         if (pipelines[name]) {
-            var pipeline = require(path.resolve(__dirname, name + '.pipeline'));
-            pipelineStr = JSON.stringify(pipeline);
+            var pipeline = require(path.resolve(PATH_TO_PIPELINES, name));
+            pipelineStr = pipeline.toString();
             pipeline = resolveSubPipelines(pipelineStr, pipeline);
-
-            return applyArguments(pipeline, args);
-        }
-    }
-
-    function applyArguments(pipeline, args) {
-        _.each(args, function (arg, i) {
-            var code = escodegen.generate(arg);
-            var argIndex = '$' + i + '';
-            code = module.exports.resolve(code, pipelines);
-            pipeline = _.flattenDeep(pipeline).map(function (pipe) {
-                return pipe && pipe.replace ?
-                    pipe.replace(argIndex, code) :
-                    pipe;
+            var argsToApply = _.map(args, function (arg) {
+                return escodegen.generate(arg);
             });
-        });
-        return pipeline;
+
+            return module.exports.applyArguments(pipelines, pipeline, argsToApply);
+        }
     }
 
     (function walk (nodes) {
