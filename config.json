@@ -1,1 +1,36 @@
-{"pipelines":{"join":true,"split":true,"filter":true,"tester":true,"another":true,"filterRecursive":true,"columnAt":true},"aliases":{"split":{"short":"s","long":"split"},"filter":{"short":"f","long":"filter"},"join":{"short":"j","long":"join"},"tester":{"short":"t","long":"tester"},"filterRecursive":{"long":"fr"}}}
+{
+    "pipelines": {
+        "join": true,
+        "split": true,
+        "filter": true,
+        "tester": true,
+        "another": true,
+        "filterRecursive": true,
+        "columnAt": true,
+        "walk": true,
+        "logFiles": true,
+        "stdoutAsyncMap": true,
+        "map": true
+    },
+    "aliases": {
+        "split": {
+            "short": "s",
+            "long": "split"
+        },
+        "filter": {
+            "short": "f",
+            "long": "filter"
+        },
+        "join": {
+            "short": "j",
+            "long": "join"
+        },
+        "tester": {
+            "short": "t",
+            "long": "tester"
+        },
+        "filterRecursive": {
+            "long": "fr"
+        }
+    }
+}

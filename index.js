@@ -10,6 +10,7 @@ var path = require('path');
 var PipelineParser = require('./pipeline-parser');
 var vm = require('vm');
 var util = require('util');
+var format = util.format;
 var beautify = require('js-beautify').js_beautify;
 
 var HAS_STDIN = !Boolean(process.stdin.isTTY);
@@ -22,7 +23,7 @@ var PATH_TO_PIPELINES = path.resolve(__dirname, 'pipelines');
 var configExists = fs.existsSync(PATH_TO_CONFIG);
 
 if (!configExists) {
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify({pipelines: {}, aliases: {}}));
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify({pipelines: {}, aliases: {}}, null, 4));
 }
 
 var config = JSON.parse(fs.readFileSync(PATH_TO_CONFIG));
@@ -88,7 +89,7 @@ function handleAlias(aliasArgs) {
     var pipelineExists = config.pipelines[pipelineName];
 
     if (!pipelineExists) {
-        return console.error('Pipeline ' + pipelineName + ' does not exist.');
+        return writeToStderr('Pipeline ' + pipelineName + ' does not exist.');
     }
 
     var definedAliases = _.map(Object.keys(config.aliases), function (key) {
@@ -103,7 +104,7 @@ function handleAlias(aliasArgs) {
     }
     else {
         if (!aliasLongName) {
-            return console.error('Alias must be supplied.');
+            return writeToStderr('Alias must be supplied.');
         }
         predicate.long = aliasLongName;
     }
@@ -112,12 +113,12 @@ function handleAlias(aliasArgs) {
 
     //conflict with pipe short hand
     if (aliasExists || predicate.short === 'p') {
-        return console.error('Alias already exists.');
+        return writeToStderr('Alias already exists.');
     }
 
     config.aliases[pipelineName] = predicate;
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config));
-    return console.log('Alias sucessfully saved.');
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
+    return writeToStdout('Alias sucessfully saved.');
 }
 
 var options = buildOptions();
@@ -153,43 +154,43 @@ var list = program.list;
 var show = program.show;
 
 if (list) {
-    return console.log(Object.keys(config.pipelines));
+    return writeToStdout(Object.keys(config.pipelines));
 }
 
 if (save) {
     if (!pipeline.length) {
-        return console.error('No pipeline provided.');
+        return writeToStderr('No pipeline provided.');
     }
 
     var name = save.toString();
     config.pipelines[name] = true;
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config));
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
     var fileName = PATH_TO_PIPELINES + '/' + name + '.js';
     var content = 'module.exports = [' + pipeline.join(',') + '];';
     content = beautify(content, { indent_size: 4 });
     fs.writeFileSync(fileName, content);
-    return console.log(name + ' pipeline saved.');
+    return writeToStdout(name + ' pipeline saved.');
 }
 
 if (remove) {
     var name = remove.toString();
     if (!config.pipelines[name]) {
-        return console.error(name + ' not found.');
+        return writeToStderr(name + ' not found.');
     }
     delete config.pipelines[name];
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config));
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
     fs.unlinkSync(path.resolve(__dirname, name + '.pipeline'));
-    return console.log(name + ' pipeline removed.');
+    return writeToStdout(name + ' pipeline removed.');
 }
 
 if (show) {
     var name = show.toString();
     name = name.split('.')[0];
     if (!config.pipelines[name]) {
-        return console.error(name + ' not found.');
+        return writeToStderr(name + ' not found.');
     }
     var savedPipeline = require(path.resolve(PATH_TO_PIPELINES, name)).toString();
-    return console.log(savedPipeline);
+    return writeToStdout(savedPipeline);
 }
 
 //TODO: pipeline is outputted as array which is nested too deeply / unnecessarily
@@ -198,7 +199,7 @@ pipeline = _.map(pipeline, function (pipe) {
 });
 
 if (program.debug) {
-    console.log('PIPELINE: ' + JSON.stringify(pipeline));
+    writeToStdout('PIPELINE: ' + JSON.stringify(pipeline));
 }
 
 function startPipeline(stdin, pipeline, callback) {
@@ -210,7 +211,11 @@ function startPipeline(stdin, pipeline, callback) {
         console: console,
         setTimeout: setTimeout,
         setInterval: setInterval,
-        require: require
+        require: require,
+        process: process,
+        async: async,
+        writeToStdout: writeToStdout,
+        writeToStderr: writeToStderr
     };
     vm.createContext(sandbox);
 
@@ -240,7 +245,7 @@ function processPipeline(sandbox, pipeline, callback) {
                 pipe + ')(stdin);',
                 val;
             if (program.debug) {
-                console.log('CURRENT PIPE: ', script);
+                writeToStdout('CURRENT PIPE: ', script);
             }
 
             var done = function (err, stdout) {
@@ -248,7 +253,7 @@ function processPipeline(sandbox, pipeline, callback) {
                     return callback(err);
                 }
                 if (program.debug) {
-                    console.log('STDOUT: ', stdout);
+                    writeToStdout('STDOUT: ', stdout);
                 }
 
                 sandbox.stdin = stdout;
@@ -270,6 +275,15 @@ function processPipeline(sandbox, pipeline, callback) {
     );
 }
 
+//same implementation as writeToStdout
+function writeToStdout() {
+    return process.stdout.write(format.apply(this, arguments) + '\n');
+}
+
+function writeToStderr() {
+    return process.stderr.write(format.apply(this, arguments) + '\n');   
+}
+
 process.stdin.resume();
 process.stdin.setEncoding(program.encoding || 'utf8');
 var data = '';
@@ -280,10 +294,11 @@ process.stdin.on('data', function(stdin) {
     else {
         startPipeline(stdin, pipeline, function (err, stdout) {
             if (err) {
-                return console.error(err);
+                writeToStderr(err);
+                return process.exit(1);
             }
             if (stdout !== undefined) {
-                console.log(stdout);
+                writeToStdout(stdout);
             }
         });
     }
@@ -293,12 +308,17 @@ process.stdin.on('end', function () {
     if (program.buffer) {
         startPipeline(data, pipeline, function (err, stdout) {
             if (err) {
-                return console.error(err);
+                writeToStderr(err);
+                return process.exit(1);
             }
             if (stdout !== undefined) {
-                console.log(stdout);
+                writeToStdout(stdout);
             }
+            process.exit(0);
         });
+    }
+    else {
+        process.exit(0);
     }
 });
 
@@ -309,10 +329,12 @@ process.on('SIGINT', function() {
 if (!HAS_STDIN) {
     startPipeline(null, pipeline, function (err, stdout) {
         if (err) {
-            return console.error(err);
+            writeToStderr(err);
+            return process.exit(1);
         }
         if (stdout !== undefined) {
-            console.log(stdout);
+            writeToStdout(stdout);
         }
+        process.exit(0);
     });
 }
