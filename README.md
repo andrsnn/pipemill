@@ -78,17 +78,25 @@ quote>   });'
 Connected correctly to server
 Inserted 3 documents into the document collection
 ```
+  Commands:
+
+    save [value]
+    remove [value]
+    list [value]
+    show [value]
+    alias [options] [value]
 
   Options:
 
     -h, --help            output usage information
     -p, --pipe [value]    An expression to which will be evaluated in the context of the stream.
-    -s, --save [value]    Save pipeline by name.
-    -r, --remove [value]  Remove a saved pipeline by name.
-    --list [value]        List all saved pipelines.
-    --show [value]        Echo out a saved pipeline by name.
     --encoding [value]    Stdin encoding.
-    -b, --buffer [value]  Read stdin into process memory until stdin end is emitted, then process pipeline.
-    -d, --debug [value]   Turn on debug mode.
+    --buffer [value]      Read stdin into process memory until stdin end is emitted, then process pipeline.
+    --debug [value]       Turn on debug mode.
+    -f, --filter [value]  filter pipeline command.
+    -j, --join [value]    join pipeline command.
+    --fr [value]          filterRecursive pipeline command.
+    -s, --split [value]   split pipeline command.
+    --columnAt [value]    columnAt pipeline command.
 
 - Must be used with node 0.12.15 or GREATER.
