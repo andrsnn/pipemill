@@ -1,4 +1,3 @@
-var fs = require('fs');
 var path = require('path');
 var _ = require('lodash');
 var esprima = require('esprima');
@@ -39,6 +38,12 @@ module.exports.applyArguments = function (pipelines, pipeline, args) {
 
 module.exports.resolve = function (code, pipelines) {
     var output = [];
+
+    //TODO refactor
+    //case that sub pipelines are used in a pipeline
+    //must wrap sub pipeline in expression
+    code = typeof code === 'function' ?
+        '(' + code.toString() + ')' : code;
 
     if (code.indexOf('pipelines.') === -1) {
         return code;
