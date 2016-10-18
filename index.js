@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+'use strict';
+
 var program = require('commander');
 var async = require('async');
 var _ = require('lodash');
@@ -8,88 +10,203 @@ var path = require('path');
 var PipelineParser = require('./pipeline-parser');
 var vm = require('vm');
 var util = require('util');
+var format = util.format;
+var beautify = require('js-beautify').js_beautify;
 
 var HAS_STDIN = !Boolean(process.stdin.isTTY);
-//this needs to be replaced to make use of the pipline-parser.esprima resolve call
+//this needs to be replaced to make use of the pipeline-parser.esprima resolve call
 var DONE_CALLBACK_REGEX = /done\s*(?:\().*(?:\))/g;
 
 var PATH_TO_CONFIG = path.resolve(__dirname, 'config.json');
+var PATH_TO_PIPELINES = path.resolve(__dirname, 'pipelines');
 
 var configExists = fs.existsSync(PATH_TO_CONFIG);
 
 if (!configExists) {
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify({pipelines: {}}));
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify({pipelines: {}, aliases: {}}, null, 4));
 }
 
 var config = JSON.parse(fs.readFileSync(PATH_TO_CONFIG));
+var pipeline = [];
+var pipelinesRan = {};
+var isRunningCommand = false;
 
-program
-    .option('-p, --pipe [value]', 'An expression to which will be evaluated in the context of the stream.', function (val, acc) {
-        acc.push(val);
-        return acc;
-    }, [])
-    .option('-s, --save [value]', 'Save pipeline by name.')
-    .option('-r, --remove [value]', 'Remove a saved pipeline by name.')
-    .option('--list [value]', 'List all saved pipelines.')
-    .option('--show [value]', 'Echo out a saved pipeline by name.')
-    .option('--encoding [value]', 'Stdin encoding.')
-    .option('-b, --buffer [value]', 'Read stdin into process memory until stdin end is emitted, then process pipeline.')
-    .option('-d, --debug [value]', 'Turn on debug mode.')
-    .parse(process.argv);
-
-
-var pipeline = program.pipe;
-var save = program.save;
-var remove = program.remove;
-var list = program.list;
-var show = program.show;
-
-if (list) {
-    return console.log(Object.keys(config.pipelines));
+function runPipelinesWithOptionalFlags() {
+    Object.keys(config.aliases).forEach(function (pipelineName) {
+        var commandName = config.aliases[pipelineName];
+        //commander names properties by the long flag value
+        var hasCommandRan = program[commandName.long];
+        if (!pipelinesRan[pipelineName] && hasCommandRan) {
+            resolvePipelineFlags(pipelineName);
+        }
+    });
 }
 
-if (save) {
-    if (!pipeline.length) {
-        return console.error('No pipeline provided.');
+function resolvePipelineFlags(pipelineName, pipelineArguments) {
+    pipelineArguments = (pipelineArguments && pipelineArguments.split(',')) || [];
+    if (pipelineName) {
+        var resolvedPipeline = require(path.resolve(PATH_TO_PIPELINES, pipelineName));
+        var parsedPipeline = PipelineParser.applyArguments(config.pipelines, resolvedPipeline, pipelineArguments);
+        pipeline = pipeline.concat(parsedPipeline);
+        pipelinesRan[pipelineName] = true;
     }
-
-    var name = save.toString();
-    config.pipelines[name] = true;
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config));
-    var fileName = path.resolve(__dirname, name + '.pipeline');
-    var content = 'module.exports = ' + JSON.stringify(pipeline, null, 4);
-    fs.writeFileSync(fileName, content);
-    return console.log(name + ' pipeline saved.');
 }
 
-if (remove) {
-    var name = remove.toString();
+function handlePipelineFlags(pipelineName, pipelineArguments) {
+    resolvePipelineFlags(pipelineName, pipelineArguments);
+}
+
+function buildOptions() {
+    return Object.keys(config.aliases).map(function (pipelineName) {
+        var commands = config.aliases[pipelineName];
+        var shortCommand = commands.short;
+        var longCommand = commands.long;
+
+        var option = [(shortCommand ? '-' + shortCommand + ', ' : '') +
+            '--' + longCommand + ' [value]', pipelineName + ' pipeline command.'];
+
+        return option;
+    });
+}
+
+function bindAliasListeners() {
+    Object.keys(config.aliases).forEach(function (pipelineName) {
+        var commands = config.aliases[pipelineName];
+        var shortCommand = commands.short;
+        var longCommand = commands.long;
+
+        //bind emitter
+        program.on(longCommand, handlePipelineFlags.bind(null, pipelineName));
+    });
+}
+
+var options = buildOptions();
+bindAliasListeners();
+
+function onListCommand() {
+    return writeToStdout(Object.keys(config.pipelines));
+}
+
+function onRemoveCommand(name) {
     if (!config.pipelines[name]) {
-        return console.error(name + ' not found.');
+        return writeToStderr(name + ' not found.');
     }
     delete config.pipelines[name];
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config));
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
     fs.unlinkSync(path.resolve(__dirname, name + '.pipeline'));
-    return console.log(name + ' pipeline removed.');
+    return writeToStdout(name + ' pipeline removed.');
 }
 
-if (show) {
-    var name = show.toString();
+function onSaveCommand(name) {
+    if (!pipeline.length) {
+        return writeToStderr('No pipeline provided.');
+    }
+
+    config.pipelines[name] = true;
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
+    var fileName = PATH_TO_PIPELINES + '/' + name + '.js';
+    var content = 'module.exports = [' + pipeline.join(',') + '];';
+    content = beautify(content, { indent_size: 4 });
+    fs.writeFileSync(fileName, content);
+    return writeToStdout(name + ' pipeline saved.');
+}
+
+function onShowCommand(name) {
     name = name.split('.')[0];
     if (!config.pipelines[name]) {
-        return console.error(name + ' not found.');
+        return writeToStderr(name + ' not found.');
     }
-    var savedPipeline = require(path.resolve(__dirname, name + '.pipeline'));
-    return console.log(savedPipeline);
+    var savedPipeline = require(path.resolve(PATH_TO_PIPELINES, name)).toString();
+    return writeToStdout(savedPipeline);
+}
+
+function onAliasCommand(pipelineName, Program) {
+    var aliasLongName = Program.multi || pipelineName,
+        aliasShortName = Program.single;
+
+    if (!pipelineName) {
+        return writeToStderr('Invalid alias parameters. At minimum pipeline name must be supplied.');
+    }
+
+    var hasShortName = Boolean(aliasShortName);
+    var pipelineExists = config.pipelines[pipelineName];
+
+    if (!pipelineExists) {
+        return writeToStderr('Pipeline ' + pipelineName + ' does not exist.');
+    }
+
+    var definedAliases = _.map(Object.keys(config.aliases), function (key) {
+        return config.aliases[key];
+    });
+
+    var predicate = {};
+
+    if (hasShortName) {
+        predicate.short = aliasShortName;
+        predicate.long = aliasLongName;
+    }
+    else {
+        if (!aliasLongName) {
+            return writeToStderr('Alias must be supplied.');
+        }
+        predicate.long = aliasLongName;
+    }
+
+    var aliasExists = _.some(definedAliases, predicate);
+
+    //conflict with pipe short hand
+    if (predicate.short === 'p') {
+        return writeToStderr('Cannot override reserved alias.');
+    }
+
+    config.aliases[pipelineName] = predicate;
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
+    return writeToStdout('Alias sucessfully saved.');
+}
+
+function handleCommand(action) {
+    isRunningCommand = true;
+    action.apply(action, _.slice(arguments, 1));
+}
+
+program
+    .option('-p, --pipe [value]', 'An expression to which will be evaluated in the context of the stream.', function (val) {
+        //its possible a optional flag has not run that should have (is this a bug with commander?)
+        runPipelinesWithOptionalFlags();
+        //esprima will crash if anonymous function is not expression
+        pipeline.push('(function(stdin) {' + val + '})');
+    })
+    .option('--encoding [value]', 'Stdin encoding.')
+    .option('--buffer [value]', 'Read stdin into process memory until stdin end is emitted, then process pipeline.')
+    .option('--debug [value]', 'Turn on debug mode.');
+
+program.command('save [value]').action(handleCommand.bind(null, onSaveCommand));
+program.command('remove [value]').action(handleCommand.bind(null, onRemoveCommand));
+program.command('list [value]').action(handleCommand.bind(null, onListCommand));
+program.command('show [value]').action(handleCommand.bind(null, onShowCommand));
+
+program.command('alias [value]')
+    .option('--single [value]', 'Alias command option: provide a short alias name. e.g. -s for split.')
+    .option('--multi [value]', 'Alias command option: provide a long alias name. e.g. --split for split.')
+    .action(handleCommand.bind(null, onAliasCommand));
+
+options.forEach(function (option) {
+    program.option.apply(program, option);
+});
+
+program.parse(process.argv);
+
+if (isRunningCommand) {
+    return;
 }
 
 //TODO: pipeline is outputted as array which is nested too deeply / unnecessarily
-pipeline = _.map(pipeline, function (pipeline) {
-    return PipelineParser.resolve(pipeline, config.pipelines);    
+pipeline = _.map(pipeline, function (pipe) {
+    return PipelineParser.resolve(pipe, config.pipelines);    
 });
 
 if (program.debug) {
-    console.log('PIPELINE: ' + JSON.stringify(pipeline));
+    writeToStdout('PIPELINE: ' + JSON.stringify(pipeline));
 }
 
 function startPipeline(stdin, pipeline, callback) {
@@ -101,7 +218,11 @@ function startPipeline(stdin, pipeline, callback) {
         console: console,
         setTimeout: setTimeout,
         setInterval: setInterval,
-        require: require
+        require: require,
+        process: process,
+        async: async,
+        writeToStdout: writeToStdout,
+        writeToStderr: writeToStderr
     };
     vm.createContext(sandbox);
 
@@ -127,11 +248,11 @@ function processPipeline(sandbox, pipeline, callback) {
             //cheap hack for async for now
             var isDoneCalled = Boolean(pipe && pipe.match && pipe.match(DONE_CALLBACK_REGEX));
 
-            var script = 'stdout = (function (stdin) {' +
-                pipe + '})(stdin);',
+            var script = 'stdout = (' +
+                pipe + ')(stdin);',
                 val;
             if (program.debug) {
-                console.log('CURRENT PIPE: ', script);
+                writeToStdout('CURRENT PIPE: ', script);
             }
 
             var done = function (err, stdout) {
@@ -139,7 +260,7 @@ function processPipeline(sandbox, pipeline, callback) {
                     return callback(err);
                 }
                 if (program.debug) {
-                    console.log('STDOUT: ', stdout);
+                    writeToStdout('STDOUT: ', stdout);
                 }
 
                 sandbox.stdin = stdout;
@@ -161,6 +282,15 @@ function processPipeline(sandbox, pipeline, callback) {
     );
 }
 
+//same implementation as writeToStdout
+function writeToStdout() {
+    return process.stdout.write(format.apply(this, arguments) + '\n');
+}
+
+function writeToStderr() {
+    return process.stderr.write(format.apply(this, arguments) + '\n');   
+}
+
 process.stdin.resume();
 process.stdin.setEncoding(program.encoding || 'utf8');
 var data = '';
@@ -171,9 +301,12 @@ process.stdin.on('data', function(stdin) {
     else {
         startPipeline(stdin, pipeline, function (err, stdout) {
             if (err) {
-                return console.error(err);
+                writeToStderr(err);
+                return process.exit(1);
             }
-            console.log(stdout);
+            if (stdout !== undefined) {
+                writeToStdout(stdout);
+            }
         });
     }
 });
@@ -182,10 +315,17 @@ process.stdin.on('end', function () {
     if (program.buffer) {
         startPipeline(data, pipeline, function (err, stdout) {
             if (err) {
-                return console.error(err);
+                writeToStderr(err);
+                return process.exit(1);
             }
-            console.log(stdout);
+            if (stdout !== undefined) {
+                writeToStdout(stdout);
+            }
+            process.exit(0);
         });
+    }
+    else {
+        process.exit(0);
     }
 });
 
@@ -196,8 +336,12 @@ process.on('SIGINT', function() {
 if (!HAS_STDIN) {
     startPipeline(null, pipeline, function (err, stdout) {
         if (err) {
-            return console.error(err);
+            writeToStderr(err);
+            return process.exit(1);
         }
-        console.log(stdout);
+        if (stdout !== undefined) {
+            writeToStdout(stdout);
+        }
+        process.exit(0);
     });
 }

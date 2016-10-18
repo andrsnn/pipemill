@@ -1,7 +1,0 @@
-module.exports = [
-    "pipelines.splitNewLine()",
-    "return _.filter(stdin, function (item){return Boolean(item)});",
-    "pipelines.map(item.split(\" \"))",
-    'return stdin.map(function (item) { return item.filter(function(subItem) { return Boolean(subItem); }) });',
-    'pipelines.reducePredicate(item[$0])'
-]
