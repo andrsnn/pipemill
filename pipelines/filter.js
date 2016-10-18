@@ -1,5 +1,6 @@
 module.exports = [function(stdin) {
     return stdin.filter(function(item) {
-        return ~item.indexOf($0 || true);
+        return typeof $0 === 'function' ?
+            $0(item) : item.includes($0 || true);
     });
 }];
