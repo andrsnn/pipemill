@@ -39,11 +39,12 @@ module.exports.applyArguments = function (pipelines, pipeline, args) {
 module.exports.resolve = function (code, pipelines) {
     var output = [];
 
-    //TODO refactor
-    //case that sub pipelines are used in a pipeline
-    //must wrap sub pipeline in expression
+    //esprima can't parse a lambda function
+    //that is not an expression
     code = typeof code === 'function' ?
         '(' + code.toString() + ')' : code;
+    code = code.indexOf('function') > -1 ?
+        '(' + code + ')' : code;
 
     if (code.indexOf('pipelines.') === -1) {
         return code;
