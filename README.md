@@ -27,8 +27,8 @@ ls -tlr | pipemill -p 'return stdin.split("\n")' \
 ```
 ``` bash
 # save your javascript pipeline with an argument and reuse by passing in an expression
-pipemill -p 'return stdin.split("\n")' \
-    -p 'return _.filter(stdin, function (item){return ~item.indexOf($0)});' --save filter
+pipemill save filter -p 'return stdin.split("\n")' \
+    -p 'return _.filter(stdin, function (item){return ~item.indexOf($0)});'
 ls -tlr | pipemill -p 'pipelines.filter("package")'
 ````
 ```javascript
@@ -36,11 +36,31 @@ ls -tlr | pipemill -p 'pipelines.filter("package")'
         'drwxr-xr-x@ 20 user  staff   680 Aug  8 21:45 package.json'
     ]
 ```
+``` bash
+# add optional arguments and reuse pipelines as first class citizens
+pipemill -p 'return stdin.split($0 || "\n")' --save split
+
+# compose large pipelines as functions of smaller saved pipelines
+pipemill save splitAndFilter -p 'pipelines.split($0)' -p 'return stdin.filter(Boolean)'
+
+pipemill -p 'pipelines.splitAndFilter("\t")'
+
+# alias your javascript pipeline for easier use
+pipemill alias splitAndFilter --single s --multi splitAndFilter
+
+pipemill -s "\t"
+#or
+pipemill --splitAndFilter "\t"
+
+# chain multiple aliased pipelines
+# each pipeline shorthandle will also evaluate in order it was declared
+pipemill -s -f "foo" -j
+```
+
 ```bash
 # pipeline supports asynchronous code evaluation
 pipemill -p 'setTimeout(function() { done("1 second");},1000)'
 ```
-
 As each pipe shares a sandbox environment on execution, its possible to set sandbox environment variables in one pipe and pass them onto the next.
 
 ```bash
@@ -71,6 +91,4 @@ Inserted 3 documents into the document collection
     -b, --buffer [value]  Read stdin into process memory until stdin end is emitted, then process pipeline.
     -d, --debug [value]   Turn on debug mode.
 
-Caveats: 
-- Currently only one memoised pipeline can be used per pipe.  Pipelines cannot currently be passed to be evaluated later.
 - Must be used with node 0.12.15 or GREATER.

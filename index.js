@@ -29,6 +29,7 @@ if (!configExists) {
 var config = JSON.parse(fs.readFileSync(PATH_TO_CONFIG));
 var pipeline = [];
 var pipelinesRan = {};
+var isRunningCommand = false;
 
 function runPipelinesWithOptionalFlags() {
     Object.keys(config.aliases).forEach(function (pipelineName) {
@@ -46,13 +47,12 @@ function resolvePipelineFlags(pipelineName, pipelineArguments) {
     if (pipelineName) {
         var resolvedPipeline = require(path.resolve(PATH_TO_PIPELINES, pipelineName));
         var parsedPipeline = PipelineParser.applyArguments(config.pipelines, resolvedPipeline, pipelineArguments);
-        pipeline.push(parsedPipeline);
+        pipeline = pipeline.concat(parsedPipeline);
         pipelinesRan[pipelineName] = true;
     }
 }
 
 function handlePipelineFlags(pipelineName, pipelineArguments) {
-    // runPipelinesWithOptionalFlags();
     resolvePipelineFlags(pipelineName, pipelineArguments);
 }
 
@@ -80,10 +80,53 @@ function bindAliasListeners() {
     });
 }
 
-function handleAlias(aliasArgs) {
-    var pipelineName = aliasArgs[0];
-    var aliasLongName = aliasArgs[1];
-    var aliasShortName = aliasArgs[2];
+var options = buildOptions();
+bindAliasListeners();
+
+function onListCommand() {
+    return writeToStdout(Object.keys(config.pipelines));
+}
+
+function onRemoveCommand(name) {
+    if (!config.pipelines[name]) {
+        return writeToStderr(name + ' not found.');
+    }
+    delete config.pipelines[name];
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
+    fs.unlinkSync(path.resolve(__dirname, name + '.pipeline'));
+    return writeToStdout(name + ' pipeline removed.');
+}
+
+function onSaveCommand(name) {
+    if (!pipeline.length) {
+        return writeToStderr('No pipeline provided.');
+    }
+
+    config.pipelines[name] = true;
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
+    var fileName = PATH_TO_PIPELINES + '/' + name + '.js';
+    var content = 'module.exports = [' + pipeline.join(',') + '];';
+    content = beautify(content, { indent_size: 4 });
+    fs.writeFileSync(fileName, content);
+    return writeToStdout(name + ' pipeline saved.');
+}
+
+function onShowCommand(name) {
+    name = name.split('.')[0];
+    if (!config.pipelines[name]) {
+        return writeToStderr(name + ' not found.');
+    }
+    var savedPipeline = require(path.resolve(PATH_TO_PIPELINES, name)).toString();
+    return writeToStdout(savedPipeline);
+}
+
+function onAliasCommand(pipelineName, Program) {
+    var aliasLongName = Program.multi || pipelineName,
+        aliasShortName = Program.single;
+
+    if (!pipelineName) {
+        return writeToStderr('Invalid alias parameters. At minimum pipeline name must be supplied.');
+    }
 
     var hasShortName = Boolean(aliasShortName);
     var pipelineExists = config.pipelines[pipelineName];
@@ -112,8 +155,8 @@ function handleAlias(aliasArgs) {
     var aliasExists = _.some(definedAliases, predicate);
 
     //conflict with pipe short hand
-    if (aliasExists || predicate.short === 'p') {
-        return writeToStderr('Alias already exists.');
+    if (predicate.short === 'p') {
+        return writeToStderr('Cannot override reserved alias.');
     }
 
     config.aliases[pipelineName] = predicate;
@@ -121,8 +164,10 @@ function handleAlias(aliasArgs) {
     return writeToStdout('Alias sucessfully saved.');
 }
 
-var options = buildOptions();
-bindAliasListeners();
+function handleCommand(action) {
+    isRunningCommand = true;
+    action.apply(action, _.slice(arguments, 1));
+}
 
 program
     .option('-p, --pipe [value]', 'An expression to which will be evaluated in the context of the stream.', function (val) {
@@ -131,14 +176,19 @@ program
         //esprima will crash if anonymous function is not expression
         pipeline.push('(function(stdin) {' + val + '})');
     })
-    .option('--save [value]', 'Save pipeline by name.')
-    .option('--remove [value]', 'Remove a saved pipeline by name.')
-    .option('--list [value]', 'List all saved pipelines.')
-    .option('--show [value]', 'Echo out a saved pipeline by name.')
     .option('--encoding [value]', 'Stdin encoding.')
     .option('--buffer [value]', 'Read stdin into process memory until stdin end is emitted, then process pipeline.')
-    .option('--debug [value]', 'Turn on debug mode.')
-    .option('--alias', 'Create pipeline flag alias.', handleAlias);
+    .option('--debug [value]', 'Turn on debug mode.');
+
+program.command('save [value]').action(handleCommand.bind(null, onSaveCommand));
+program.command('remove [value]').action(handleCommand.bind(null, onRemoveCommand));
+program.command('list [value]').action(handleCommand.bind(null, onListCommand));
+program.command('show [value]').action(handleCommand.bind(null, onShowCommand));
+
+program.command('alias [value]')
+    .option('--single [value]', 'Alias command option: provide a short alias name. e.g. -s for split.')
+    .option('--multi [value]', 'Alias command option: provide a long alias name. e.g. --split for split.')
+    .action(handleCommand.bind(null, onAliasCommand));
 
 options.forEach(function (option) {
     program.option.apply(program, option);
@@ -146,51 +196,8 @@ options.forEach(function (option) {
 
 program.parse(process.argv);
 
-// runPipelinesWithOptionalFlags();run
-
-var save = program.save;
-var remove = program.remove;
-var list = program.list;
-var show = program.show;
-
-if (list) {
-    return writeToStdout(Object.keys(config.pipelines));
-}
-
-if (save) {
-    if (!pipeline.length) {
-        return writeToStderr('No pipeline provided.');
-    }
-
-    var name = save.toString();
-    config.pipelines[name] = true;
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
-    var fileName = PATH_TO_PIPELINES + '/' + name + '.js';
-    var content = 'module.exports = [' + pipeline.join(',') + '];';
-    content = beautify(content, { indent_size: 4 });
-    fs.writeFileSync(fileName, content);
-    return writeToStdout(name + ' pipeline saved.');
-}
-
-if (remove) {
-    var name = remove.toString();
-    if (!config.pipelines[name]) {
-        return writeToStderr(name + ' not found.');
-    }
-    delete config.pipelines[name];
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
-    fs.unlinkSync(path.resolve(__dirname, name + '.pipeline'));
-    return writeToStdout(name + ' pipeline removed.');
-}
-
-if (show) {
-    var name = show.toString();
-    name = name.split('.')[0];
-    if (!config.pipelines[name]) {
-        return writeToStderr(name + ' not found.');
-    }
-    var savedPipeline = require(path.resolve(PATH_TO_PIPELINES, name)).toString();
-    return writeToStdout(savedPipeline);
+if (isRunningCommand) {
+    return;
 }
 
 //TODO: pipeline is outputted as array which is nested too deeply / unnecessarily
