@@ -1,4 +1,0 @@
-module.exports = [
-    "return stdin.split(\"\\n\")",
-    "return _.filter(stdin, function (item){return ~item.indexOf($0)});"
-]
