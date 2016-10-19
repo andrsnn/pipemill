@@ -1,10 +1,13 @@
+'use strict';
+
 var path = require('path');
 var _ = require('lodash');
 var esprima = require('esprima');
 var escodegen = require('escodegen');
+var Constants = require('./Constants');
 
-var ARGUMENTS_REGEX = /\$\d/g;
-var PATH_TO_PIPELINES = path.resolve(__dirname, 'pipelines');
+var PATH_TO_PIPELINES = Constants.PATH_TO_PIPELINES;
+var ARGUMENTS_REGEX = Constants.ARGUMENTS_REGEX;
 
 module.exports.applyArguments = function (pipelines, pipeline, args) {
     var hasProvidedArgs = args && args.length;
