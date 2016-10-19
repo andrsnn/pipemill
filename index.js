@@ -191,11 +191,37 @@ function onPruneCommand() {
             listingName = listingName.slice(0, listingName.lastIndexOf(extension));
 
             if (!config.pipelines[listingName]) {
-                writeToStdout('Removed ' + listingName);
+                writeToStdout('Removed from pipelines directory ' + listingName);
                 fs.unlinkSync(path.resolve(PATH_TO_PIPELINES, listingName));
             }
         }
     });
+    _.each(config.pipelines, function (value, fileName) {
+        var fileExists = fs.existsSync(path.resolve(PATH_TO_PIPELINES, fileName));
+
+        if (!fileExists) {
+            console.log('Removed ' + fileName + ' from config.');
+            delete config.pipelines[fileName];
+        }
+    });
+
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config));
+}
+
+function onIncludeCommand() {
+    var directoryListing = fs.readdirSync(PATH_TO_PIPELINES);
+    _.each(directoryListing, function (listingName) {
+        var listingStat = fs.statSync(path.resolve(PATH_TO_PIPELINES, listingName));
+        var extension = path.extname(listingName);
+        var nameWithoutExtension = listingName.slice(0, listingName.lastIndexOf(extension));
+        if (!listingStat.isDirectory() &&
+            extension === '.js' &&
+            !config.pipelines[nameWithoutExtension]) {
+            console.log('Adding ' + nameWithoutExtension + ' to config.');
+            config.pipelines[nameWithoutExtension] = true;
+        }
+    });
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config));
 }
 
 function handleCommand(action) {
@@ -219,7 +245,7 @@ program.command('remove [value]').action(handleCommand.bind(null, onRemoveComman
 program.command('list [value]').action(handleCommand.bind(null, onListCommand));
 program.command('show [value]').action(handleCommand.bind(null, onShowCommand));
 program.command('prune').action(handleCommand.bind(null, onPruneCommand));
-// program.command('include').action(handleCommand.bind(null, onIncludeCommand));
+program.command('include').action(handleCommand.bind(null, onIncludeCommand));
 
 program.command('alias [value]')
     .option('--single [value]', 'Alias command option: provide a short alias name. e.g. -s for split.')
