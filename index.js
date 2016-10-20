@@ -27,23 +27,27 @@ var pipelinesFolderExists = fs.existsSync(PATH_TO_PIPELINES);
 var defaultConfig = JSON.parse(fs.readFileSync(PATH_TO_DEFAULT_CONFIG).toString());
 
 if (!configExists) {
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(defaultConfig));
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(defaultConfig, null, 4));
 }
 if (!pipelinesFolderExists) {
     fs.mkdirSync(PATH_TO_PIPELINES);
 }
 
-var config = JSON.parse(fs.readFileSync(PATH_TO_CONFIG).toString());
+if (!configExists && !pipelinesFolderExists) {
+    //case we create default config is if pipelines folder does not exist
+    //and there was no config
+    _.each(defaultConfig.pipelines, function (value, key) {
+        key += '.js';
+        var pipelineExists = fs.existsSync(path.resolve(PATH_TO_PIPELINES, key));
 
-_.each(defaultConfig.pipelines, function (value, key) {
-    key += '.js';
-    var pipelineExists = fs.existsSync(path.resolve(PATH_TO_PIPELINES, key));
+        if (!pipelineExists) {
+            var pipelineFileData = fs.readFileSync(path.resolve(PATH_TO_DEFAULT_PIPELINES, key)).toString();
+            fs.writeFileSync(path.resolve(PATH_TO_PIPELINES, key), pipelineFileData);
+        }
+    });
+}
 
-    if (!pipelineExists) {
-        var pipelineFileData = fs.readFileSync(path.resolve(PATH_TO_DEFAULT_PIPELINES, key)).toString();
-        fs.writeFileSync(path.resolve(PATH_TO_PIPELINES, key), pipelineFileData);
-    }
-});
+var config = JSON.parse(fs.readFileSync(PATH_TO_CONFIG).toString(), null, 4);
 
 var pipeline = [];
 var pipelinesRan = {};
@@ -110,8 +114,8 @@ function onRemoveCommand(name) {
         return writeToStderr(name + ' not found.');
     }
     delete config.pipelines[name];
+    fs.unlinkSync(path.resolve(PATH_TO_PIPELINES, name + '.js'));
     fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
-    fs.unlinkSync(path.resolve(__dirname, name + '.pipeline'));
     return writeToStdout(name + ' pipeline removed.');
 }
 
@@ -191,21 +195,13 @@ function onPruneCommand() {
             listingName = listingName.slice(0, listingName.lastIndexOf(extension));
 
             if (!config.pipelines[listingName]) {
-                writeToStdout('Removed from pipelines directory ' + listingName);
+                writeToStdout('Removed ' + listingName + 'from pipelines directory.');
                 fs.unlinkSync(path.resolve(PATH_TO_PIPELINES, listingName));
             }
         }
     });
-    _.each(config.pipelines, function (value, fileName) {
-        var fileExists = fs.existsSync(path.resolve(PATH_TO_PIPELINES, fileName));
 
-        if (!fileExists) {
-            console.log('Removed ' + fileName + ' from config.');
-            delete config.pipelines[fileName];
-        }
-    });
-
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config));
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
 }
 
 function onIncludeCommand() {
@@ -221,7 +217,7 @@ function onIncludeCommand() {
             config.pipelines[nameWithoutExtension] = true;
         }
     });
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config));
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
 }
 
 function handleCommand(action) {
