@@ -12,21 +12,43 @@ var vm = require('vm');
 var util = require('util');
 var format = util.format;
 var beautify = require('js-beautify').js_beautify;
+var Constants = require('./Constants');
 
-var HAS_STDIN = !Boolean(process.stdin.isTTY);
-//this needs to be replaced to make use of the pipeline-parser.esprima resolve call
-var DONE_CALLBACK_REGEX = /done\s*(?:\().*(?:\))/g;
-
-var PATH_TO_CONFIG = path.resolve(__dirname, 'config.json');
-var PATH_TO_PIPELINES = path.resolve(__dirname, 'pipelines');
+var PATH_TO_CONFIG = Constants.PATH_TO_CONFIG;
+var PATH_TO_DEFAULT_CONFIG = Constants.PATH_TO_DEFAULT_CONFIG;
+var PATH_TO_PIPELINES = Constants.PATH_TO_PIPELINES;
+var PATH_TO_DEFAULT_PIPELINES = Constants.PATH_TO_DEFAULT_PIPELINES;
+var HAS_STDIN = Constants.HAS_STDIN;
+var DONE_CALLBACK_REGEX = Constants.DONE_CALLBACK_REGEX;
 
 var configExists = fs.existsSync(PATH_TO_CONFIG);
+var pipelinesFolderExists = fs.existsSync(PATH_TO_PIPELINES);
+
+var defaultConfig = JSON.parse(fs.readFileSync(PATH_TO_DEFAULT_CONFIG).toString());
 
 if (!configExists) {
-    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify({pipelines: {}, aliases: {}}, null, 4));
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(defaultConfig, null, 4));
+}
+if (!pipelinesFolderExists) {
+    fs.mkdirSync(PATH_TO_PIPELINES);
 }
 
-var config = JSON.parse(fs.readFileSync(PATH_TO_CONFIG));
+if (!configExists && !pipelinesFolderExists) {
+    //case we create default config is if pipelines folder does not exist
+    //and there was no config
+    _.each(defaultConfig.pipelines, function (value, key) {
+        key += '.js';
+        var pipelineExists = fs.existsSync(path.resolve(PATH_TO_PIPELINES, key));
+
+        if (!pipelineExists) {
+            var pipelineFileData = fs.readFileSync(path.resolve(PATH_TO_DEFAULT_PIPELINES, key)).toString();
+            fs.writeFileSync(path.resolve(PATH_TO_PIPELINES, key), pipelineFileData);
+        }
+    });
+}
+
+var config = JSON.parse(fs.readFileSync(PATH_TO_CONFIG).toString(), null, 4);
+
 var pipeline = [];
 var pipelinesRan = {};
 var isRunningCommand = false;
@@ -92,8 +114,8 @@ function onRemoveCommand(name) {
         return writeToStderr(name + ' not found.');
     }
     delete config.pipelines[name];
+    fs.unlinkSync(path.resolve(PATH_TO_PIPELINES, name + '.js'));
     fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
-    fs.unlinkSync(path.resolve(__dirname, name + '.pipeline'));
     return writeToStdout(name + ' pipeline removed.');
 }
 
@@ -164,6 +186,40 @@ function onAliasCommand(pipelineName, Program) {
     return writeToStdout('Alias sucessfully saved.');
 }
 
+function onPruneCommand() {
+    var directoryListing = fs.readdirSync(PATH_TO_PIPELINES);
+    _.each(directoryListing, function (listingName) {
+        var listingStat = fs.statSync(path.resolve(PATH_TO_PIPELINES, listingName));
+        if (!listingStat.isDirectory()) {
+            var extension = path.extname(listingName);
+            listingName = listingName.slice(0, listingName.lastIndexOf(extension));
+
+            if (!config.pipelines[listingName]) {
+                writeToStdout('Removed ' + listingName + 'from pipelines directory.');
+                fs.unlinkSync(path.resolve(PATH_TO_PIPELINES, listingName));
+            }
+        }
+    });
+
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
+}
+
+function onIncludeCommand() {
+    var directoryListing = fs.readdirSync(PATH_TO_PIPELINES);
+    _.each(directoryListing, function (listingName) {
+        var listingStat = fs.statSync(path.resolve(PATH_TO_PIPELINES, listingName));
+        var extension = path.extname(listingName);
+        var nameWithoutExtension = listingName.slice(0, listingName.lastIndexOf(extension));
+        if (!listingStat.isDirectory() &&
+            extension === '.js' &&
+            !config.pipelines[nameWithoutExtension]) {
+            console.log('Adding ' + nameWithoutExtension + ' to config.');
+            config.pipelines[nameWithoutExtension] = true;
+        }
+    });
+    fs.writeFileSync(PATH_TO_CONFIG, JSON.stringify(config, null, 4));
+}
+
 function handleCommand(action) {
     isRunningCommand = true;
     action.apply(action, _.slice(arguments, 1));
@@ -184,6 +240,8 @@ program.command('save [value]').action(handleCommand.bind(null, onSaveCommand));
 program.command('remove [value]').action(handleCommand.bind(null, onRemoveCommand));
 program.command('list [value]').action(handleCommand.bind(null, onListCommand));
 program.command('show [value]').action(handleCommand.bind(null, onShowCommand));
+program.command('prune').action(handleCommand.bind(null, onPruneCommand));
+program.command('include').action(handleCommand.bind(null, onIncludeCommand));
 
 program.command('alias [value]')
     .option('--single [value]', 'Alias command option: provide a short alias name. e.g. -s for split.')
