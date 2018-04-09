@@ -13,7 +13,7 @@ var format = util.format;
 
 var { getAvailableSubCommands, runInSandbox } = require('./helpers');
 
-var PATH_TO_SUB_COMMANDS = process.env['PIPEMILL_SUB_COMMANDS_PATH'] || './sub-commands';
+var PATH_TO_SUB_COMMANDS = process.env['PIPEMILL_SUB_COMMANDS_PATH'] || path.resolve(__dirname, './sub-commands');
 var HAS_STDIN = !Boolean(process.stdin.isTTY);
 var ANONYMOUS_COMMAND_TYPE = 'ANONYMOUS_COMMAND';
 var SUB_COMMAND_TYPE = 'SUB_COMMAND';
