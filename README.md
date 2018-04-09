@@ -25,6 +25,25 @@ cat package.json | pipepill -p 'stdin.replace("ISC", "MIT")'
 
 ```
 
+AWK
+
+```bash
+
+# extract file permissions from ls -l
+ls -l | pipemill --columnAt 0
+
+# produces
+# [ 'total',
+# '-rw-r--r--',
+# '-rw-r--r--',
+# '-rwxr-xr-x']
+
+# OR
+
+ls -l | node index.js --split --map 'e.split(/\s+/g)' --map 'e[0]'
+
+```
+
 JQ
 
 ```bash
@@ -32,7 +51,6 @@ JQ
 cat package.json | pipemill --parse -p 'stdin.license = "MIT"; return stdin' --stringify
 
 ```
-
 
 Find
 
