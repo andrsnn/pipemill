@@ -12,7 +12,7 @@ ls -l | pipemill --split --filter 'e.includes("json")' --join
 
 #OR
 
-ls -l | node index.js -p 'stdin.split("\n")' -p 'stdin.filter(Boolean)' -p 'stdin.filter(e => e.includes("json"))' -p 'stdin.toString()'
+ls -l | pipemill -p 'stdin.split("\n")' -p 'stdin.filter(Boolean)' -p 'stdin.filter(e => e.includes("json"))' -p 'stdin.toString()'
 
 ```
 
@@ -40,7 +40,7 @@ ls -l | pipemill --columnAt 0
 
 # OR
 
-ls -l | node index.js --split --map 'e.split(/\s+/g)' --map 'e[0]'
+ls -l | pipemill --split --map 'e.split(/\s+/g)' --map 'e[0]'
 
 ```
 
@@ -57,6 +57,6 @@ Find
 ```bash
 # find all js files in node_modules folder
 
-node index.js -p 'a = []' --walk 'path.extname(filePath) === ".js" && a.push(filePath), ./node_modules' -p 'a'
+pipemill -p 'a = []' --walk './node_modules, path.extname(filePath) === ".js" && a.push(filePath)' -p 'a'
 
 ```

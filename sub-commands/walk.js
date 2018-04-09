@@ -2,7 +2,7 @@ var path = require('path');
 var fs = require('fs');
 
 module.exports.run = function(stdin, args = [], rawArgs, runInSandbox) {
-	var pathToFolder = path.resolve(process.cwd(), args[1] || '.');
+	var pathToFolder = path.resolve(process.cwd(), args[0] || '.');
 
 	function traverse(pathToFolder) {
 		var dir = fs.readdirSync(pathToFolder);
@@ -13,7 +13,7 @@ module.exports.run = function(stdin, args = [], rawArgs, runInSandbox) {
 				traverse(pathToChild);
 			}
 			else {
-				runInSandbox(args[0], { filePath: pathToChild });
+				runInSandbox(args[1], { filePath: pathToChild });
 			}
 		})
 	}
