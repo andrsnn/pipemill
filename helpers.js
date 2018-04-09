@@ -13,7 +13,7 @@ module.exports.getAvailableSubCommands = (pathToSubCommands) => {
             typeof subCommandModule !== 'function' &&
             typeof subCommandModule.run !== 'function') {
             console.error(`Sub command ${subCommandName} must export a function or a method run which is a function.`);
-            process.exit(0);
+            process.exit(1);
         }
         pipelines[subCommandName] = {
             path: subCommandPath,
