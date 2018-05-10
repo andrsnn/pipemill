@@ -132,7 +132,7 @@ process.stdin.on('data', function(stdin) {
 
 process.stdin.on('end', function () {
     if (program.buffer) {
-        const stdout = runPipemill(stdin);
+        const stdout = runPipemill(data);
 
         if (stdout !== undefined || stdout !== null) {
             log(stdout);
