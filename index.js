@@ -9,6 +9,7 @@ var fs = require('fs');
 var path = require('path');
 var vm = require('vm');
 var util = require('util');
+var chalk = require('chalk');
 var format = util.format;
 
 var { getAvailableSubCommands, runInSandbox } = require('./helpers');
@@ -71,6 +72,7 @@ function runPipemill(stdin) {
         path,
         os,
         util,
+        chalk,
 
         stdin,
         stdout: stdin
