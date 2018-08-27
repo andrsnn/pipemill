@@ -1,6 +1,6 @@
 {
   "name": "pipemill",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -21,5 +21,9 @@
   "preferGlobal": "true",
   "bin": {
     "pipemill": "index.js"
+  },
+  "repository": {
+    "type" : "git",
+    "url" : "https://github.com/andrsnn/pipemill.git"
   }
 }
