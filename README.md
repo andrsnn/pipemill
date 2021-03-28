@@ -98,11 +98,18 @@ cat logs | pipemill --split -p 'stdin.map(e => e.split(" "))'
 #   ]
 # ]
 
-cat logs | pipemill --split -p 'stdin.map(e => e.split(" "))' -p 'stdin.map(e => e[0])' -p '_.uniq(stdin)'
+cat logs | pipemill --split \
+    -p 'stdin.map(e => e.split(" "))' \
+    -p 'stdin.map(e => e[0])' \
+    -p '_.uniq(stdin)'
 
 # [ '192.168.2.20', '127.0.0.1' ]
 
-cat logs | pipemill --split -p 'stdin.map(e => e.split(" "))' -p 'stdin.map(e => e[0])' -p '_.uniq(stdin)' --join
+cat logs | pipemill --split \
+    -p 'stdin.map(e => e.split(" "))' \
+    -p 'stdin.map(e => e[0])' \
+    -p '_.uniq(stdin)' \
+    --join
 
 # 192.168.2.20
 # 127.0.0.1

@@ -1,12 +1,12 @@
 {
   "name": "pipemill",
-  "version": "2.1.5",
-  "description": "",
+  "version": "2.2.5",
+  "description": "All your favorite *nix utilities in JavaScript.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Aidan Anderson <aidan@andrsnn.com>",
   "license": "ISC",
   "dependencies": {
     "async": "2.0.1",
@@ -18,7 +18,7 @@
   "engines": {
     "node": ">=4.4.6"
   },
-  "preferGlobal": "true",
+  "preferGlobal": true,
   "bin": {
     "pipemill": "index.js"
   },
