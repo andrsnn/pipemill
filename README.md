@@ -8,6 +8,69 @@ Inspiration taken from the [unix pipemill](https://en.wikipedia.org/wiki/Pipelin
 
 ## Examples
 
+### Replace package.json license
+
+```bash
+
+cat package.json | pipepill -p 'stdin.replace("ISC", "MIT")'
+
+```
+
+### Get the userId from an API request
+```bash
+curl https://jsonplaceholder.typicode.com/todos/1 | pipemill --parse -p 'stdin.userId'
+```
+
+### Grab file permissions from `ls -l`
+
+```bash
+
+# extract file permissions from ls -l
+ls -l | pipemill --columnAt 0
+
+# produces
+# [ 'total',
+# '-rw-r--r--',
+# '-rw-r--r--',
+# '-rwxr-xr-x']
+
+# OR
+
+ls -l | pipemill --split --map 'e.split(/\s+/g)' --map 'e[0]'
+
+```
+
+### Find all unique open source licenses used in node_modules
+
+```bash
+find ./node_modules -iname 'package.json' | while read file; do 
+    cat $file | pipemill --buffer --parse -p 'stdin.license'
+done | pipemill --buffer --split -p 'stdin.filter(Boolean)' -p '_.uniq(stdin)'
+
+# Outputs:
+# [
+#   'MIT',
+#   '(MIT OR CC0-1.0)',
+#   'Apache-2.0',
+#   'BSD-2-Clause',
+#   'BSD-3-Clause',
+#   'ISC',
+#   'CC-BY-3.0',
+#   'CC0-1.0'
+# ]
+```
+
+### Get JSON files from directory
+
+```bash
+find . -iname '*.json' -type f | while read file; do echo $file | pipemill -p 'stdin.match(/\d+\.json/g)[0]'; done
+
+# Outputs:
+# 1.json
+# 2.json
+# etc ...
+```
+
 ### Parsing Apache logs
 
 ```bash
@@ -71,62 +134,4 @@ cat logs | pipemill --split \
 # Outputs:
 # 192.168.2.20
 # 127.0.0.1
-```
-
-### Find all unique open source licenses used in node_modules
-
-```bash
-find ./node_modules -iname 'package.json' | while read file; do 
-    cat $file | pipemill --buffer --parse -p 'stdin.license'
-done | pipemill --buffer --split -p 'stdin.filter(Boolean)' -p '_.uniq(stdin)'
-
-# Outputs:
-# [
-#   'MIT',
-#   '(MIT OR CC0-1.0)',
-#   'Apache-2.0',
-#   'BSD-2-Clause',
-#   'BSD-3-Clause',
-#   'ISC',
-#   'CC-BY-3.0',
-#   'CC0-1.0'
-# ]
-```
-
-### Get JSON files from directory
-
-```bash
-find . -iname '*.json' -type f | while read file; do echo $file | pipemill -p 'stdin.match(/\d+\.json/g)[0]'; done
-
-# Outputs:
-# 1.json
-# 2.json
-# etc ...
-```
-
-### Replace package.json license
-
-```bash
-
-cat package.json | pipepill -p 'stdin.replace("ISC", "MIT")'
-
-```
-
-### Grab file permissions from `ls -l`
-
-```bash
-
-# extract file permissions from ls -l
-ls -l | pipemill --columnAt 0
-
-# produces
-# [ 'total',
-# '-rw-r--r--',
-# '-rw-r--r--',
-# '-rwxr-xr-x']
-
-# OR
-
-ls -l | pipemill --split --map 'e.split(/\s+/g)' --map 'e[0]'
-
 ```
