@@ -12,7 +12,7 @@
     "async": "2.0.1",
     "chalk": "2.4.1",
     "commander": "2.9.0",
-    "lodash": "4.14.1",
+    "lodash": "^4.17.21",
     "moment": "2.22.1"
   },
   "engines": {
@@ -23,7 +23,7 @@
     "pipemill": "index.js"
   },
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/andrsnn/pipemill.git"
+    "type": "git",
+    "url": "https://github.com/andrsnn/pipemill.git"
   }
 }
