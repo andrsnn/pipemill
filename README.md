@@ -6,52 +6,7 @@ Pipemill allows manipulation of stdin process streams, chaining stdin between a 
 
 Inspiration taken from the [unix pipemill](https://en.wikipedia.org/wiki/Pipeline_(Unix)#Pipemill).
 
-### Grep
-
-```bash
-
-ls -l | pipemill --split --filter 'e.includes("json")' --join
-
-#OR
-
-ls -l | pipemill -p 'stdin.split("\n")' -p 'stdin.filter(Boolean)' -p 'stdin.filter(e => e.includes("json"))' -p 'stdin.toString()'
-
-```
-
-### Sed
-
-```bash
-
-cat package.json | pipepill -p 'stdin.replace("ISC", "MIT")'
-
-```
-
-### AWK
-
-```bash
-
-# extract file permissions from ls -l
-ls -l | pipemill --columnAt 0
-
-# produces
-# [ 'total',
-# '-rw-r--r--',
-# '-rw-r--r--',
-# '-rwxr-xr-x']
-
-# OR
-
-ls -l | pipemill --split --map 'e.split(/\s+/g)' --map 'e[0]'
-
-```
-
-### JQ
-
-```bash
-
-cat package.json | pipemill --parse -p 'stdin.license = "MIT"; return stdin' --stringify
-
-```
+## Examples
 
 ### Parsing Apache logs
 
@@ -59,6 +14,7 @@ cat package.json | pipemill --parse -p 'stdin.license = "MIT"; return stdin' --s
 
 cat logs | pipemill --split -p 'stdin.map(e => e.split(" "))'
 
+# Outputs:
 # [
 #   [
 #     '192.168.2.20',
@@ -103,6 +59,7 @@ cat logs | pipemill --split \
     -p 'stdin.map(e => e[0])' \
     -p '_.uniq(stdin)'
 
+# Outputs:
 # [ '192.168.2.20', '127.0.0.1' ]
 
 cat logs | pipemill --split \
@@ -111,6 +68,65 @@ cat logs | pipemill --split \
     -p '_.uniq(stdin)' \
     --join
 
+# Outputs:
 # 192.168.2.20
 # 127.0.0.1
+```
+
+### Find all unique open source licenses used in node_modules
+
+```bash
+find ./node_modules -iname 'package.json' | while read file; do 
+    cat $file | pipemill --buffer --parse -p 'stdin.license'
+done | pipemill --buffer --split -p 'stdin.filter(Boolean)' -p '_.uniq(stdin)'
+
+# Outputs:
+# [
+#   'MIT',
+#   '(MIT OR CC0-1.0)',
+#   'Apache-2.0',
+#   'BSD-2-Clause',
+#   'BSD-3-Clause',
+#   'ISC',
+#   'CC-BY-3.0',
+#   'CC0-1.0'
+# ]
+```
+
+### Get JSON files from directory
+
+```bash
+find . -iname '*.json' -type f | while read file; do echo $file | pipemill -p 'stdin.match(/\d+\.json/g)[0]'; done
+
+# Outputs:
+# 1.json
+# 2.json
+# etc ...
+```
+
+### Replace package.json license
+
+```bash
+
+cat package.json | pipepill -p 'stdin.replace("ISC", "MIT")'
+
+```
+
+### Grab file permissions from `ls -l`
+
+```bash
+
+# extract file permissions from ls -l
+ls -l | pipemill --columnAt 0
+
+# produces
+# [ 'total',
+# '-rw-r--r--',
+# '-rw-r--r--',
+# '-rwxr-xr-x']
+
+# OR
+
+ls -l | pipemill --split --map 'e.split(/\s+/g)' --map 'e[0]'
+
 ```
