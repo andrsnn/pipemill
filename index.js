@@ -23,7 +23,7 @@ var SUB_COMMAND_TYPE = 'SUB_COMMAND';
 var pipemill = [];
 
 program
-    .option('-p, --pipe [value]', 'An expression which will be evaluated in the context of the stream.', function (value) {
+    .option('-p, --pipe [value]', 'Registers a \'pipe\' expression.  Each pipe\'s return value becomes the \'stdin\' for the next expression.', function (value) {
         pipemill.push({
             type: ANONYMOUS_COMMAND_TYPE,
             run: value,
@@ -34,7 +34,7 @@ program
         });
     })
     .option('--encoding [value]', 'Stdin encoding.')
-    .option('--buffer [value]', 'Read stdin into process memory until stdin end is emitted, then process pipeline.');
+    .option('--buffer [value]', 'Read stdin into process memory until stdin end is emitted, then process pipeline.', true);
 
 var availableSubCommands = getAvailableSubCommands(PATH_TO_SUB_COMMANDS);
 
