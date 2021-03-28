@@ -6,6 +6,10 @@ Pipemill allows manipulation of stdin process streams, chaining stdin between a 
 
 Inspiration taken from the [unix pipemill](https://en.wikipedia.org/wiki/Pipeline_(Unix)#Pipemill).
 
+## Install
+
+`npm i -g pipemill`
+
 ## Examples
 
 ### Replace package.json license
