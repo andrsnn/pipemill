@@ -1,6 +1,6 @@
 {
   "name": "pipemill",
-  "version": "2.2.7",
+  "version": "2.2.8",
   "description": "All your favorite *nix utilities in JavaScript.",
   "main": "index.js",
   "scripts": {
@@ -25,5 +25,23 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/andrsnn/pipemill.git"
-  }
+  },
+  "keywords": [
+    "cli",
+    "command line",
+    "logs",
+    "log",
+    "streaming",
+    "pipe",
+    "json",
+    "parsing",
+    "file",
+    "data",
+    "series",
+    "parallel",
+    "make",
+    "tool",
+    "build",
+    "pipelining"
+  ]
 }
