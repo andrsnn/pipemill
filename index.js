@@ -23,7 +23,7 @@ var SUB_COMMAND_TYPE = 'SUB_COMMAND';
 var pipemill = [];
 
 program
-    .option('-p, --pipe [value]', 'An expression which will be evaluated in the context of the stream.', function (value) {
+    .option('-p, --pipe [value]', 'Registers a \'pipe\' expression.  Each pipe\'s return value becomes the \'stdin\' for the next expression.', function (value) {
         pipemill.push({
             type: ANONYMOUS_COMMAND_TYPE,
             run: value,
@@ -34,7 +34,8 @@ program
         });
     })
     .option('--encoding [value]', 'Stdin encoding.')
-    .option('--buffer [value]', 'Read stdin into process memory until stdin end is emitted, then process pipeline.');
+    .option('--buffer [value]', 'Read stdin into process memory until stdin end is emitted, then process pipeline.', true)
+    .option('--debug [value]', 'Enable verbose logging');
 
 var availableSubCommands = getAvailableSubCommands(PATH_TO_SUB_COMMANDS);
 
@@ -81,7 +82,7 @@ function runPipemill(stdin) {
     });
     vm.createContext(pipemillSandboxContext);
 
-    pipemill.forEach(command => {
+    pipemill.forEach((command, i) => {
         var { type, run, args, rawArgs, name, path } = command;
 
         pipemillSandboxContext.stdin = pipemillSandboxContext.stdout;
@@ -93,9 +94,29 @@ function runPipemill(stdin) {
                     : command.run
             }}`;
 
-            vm.runInContext(`stdout = (${code})(stdin)`, pipemillSandboxContext);
+            var codeToRun = `stdout = (${code})(stdin)`;
+
+            if (program.debug) {
+                console.log(`
+                EXECUTING ${i} -
+                    command: ${JSON.stringify(command)}
+                    stdin: ${pipemillSandboxContext.stdin}
+                    codeToExecute: ${codeToRun}
+                `);
+            }
+
+            vm.runInContext(codeToRun, pipemillSandboxContext);
         }
         else {
+            if (program.debug) {
+                console.log(`
+                EXECUTING ${i} -
+                    command: ${JSON.stringify(command)}
+                    stdin: ${pipemillSandboxContext.stdin}
+                    codeToExecute: ${command.path}
+                `);
+            }
+
             pipemillSandboxContext.stdout = run(
                 pipemillSandboxContext.stdin, args, rawArgs, runInSandbox(pipemillSandboxContext));
         }

@@ -1,29 +1,29 @@
 {
   "name": "pipemill",
-  "version": "2.1.5",
-  "description": "",
+  "version": "2.2.5",
+  "description": "All your favorite *nix utilities in JavaScript.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Aidan Anderson <aidan@andrsnn.com>",
   "license": "ISC",
   "dependencies": {
     "async": "2.0.1",
     "chalk": "2.4.1",
     "commander": "2.9.0",
-    "lodash": "4.14.1",
+    "lodash": "^4.17.21",
     "moment": "2.22.1"
   },
   "engines": {
     "node": ">=4.4.6"
   },
-  "preferGlobal": "true",
+  "preferGlobal": true,
   "bin": {
     "pipemill": "index.js"
   },
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/andrsnn/pipemill.git"
+    "type": "git",
+    "url": "https://github.com/andrsnn/pipemill.git"
   }
 }

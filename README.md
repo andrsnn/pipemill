@@ -1,10 +1,12 @@
 # pipemill
 
-All your favorite nix utilities in JavaScript.
+All your favorite *nix utilities in JavaScript.
 
-Pipemill allows manipulation of stdin process streams, chaining process stdin between a series of JavaScript expressions.
+Pipemill allows manipulation of stdin process streams, chaining stdin between a series of JavaScript expressions.
 
-Grep
+Inspiration taken from the [unix pipemill](https://en.wikipedia.org/wiki/Pipeline_(Unix)#Pipemill).
+
+### Grep
 
 ```bash
 
@@ -16,8 +18,7 @@ ls -l | pipemill -p 'stdin.split("\n")' -p 'stdin.filter(Boolean)' -p 'stdin.fil
 
 ```
 
-
-Sed
+### Sed
 
 ```bash
 
@@ -25,7 +26,7 @@ cat package.json | pipepill -p 'stdin.replace("ISC", "MIT")'
 
 ```
 
-AWK
+### AWK
 
 ```bash
 
@@ -44,7 +45,7 @@ ls -l | pipemill --split --map 'e.split(/\s+/g)' --map 'e[0]'
 
 ```
 
-JQ
+### JQ
 
 ```bash
 
@@ -52,11 +53,64 @@ cat package.json | pipemill --parse -p 'stdin.license = "MIT"; return stdin' --s
 
 ```
 
-Find
+### Parsing Apache logs
 
 ```bash
-# find all js files in node_modules folder
 
-pipemill -p 'a = []' --walk './node_modules, path.extname(filePath) === ".js" && a.push(filePath)' -p 'a'
+cat logs | pipemill --split -p 'stdin.map(e => e.split(" "))'
 
+# [
+#   [
+#     '192.168.2.20',
+#     '-',
+#     '-',
+#     '[28/Jul/2006:10:27:10',
+#     '-0300]',
+#     '"GET',
+#     '/cgi-bin/try/',
+#     'HTTP/1.0"',
+#     '200',
+#     '3395'
+#   ],
+#   [
+#     '127.0.0.1',
+#     '-',
+#     '-',
+#     '[28/Jul/2006:10:22:04',
+#     '-0300]',
+#     '"GET',
+#     '/',
+#     'HTTP/1.0"',
+#     '200',
+#     '2216'
+#   ],
+#   [
+#     '192.168.2.20',
+#     '-',
+#     '-',
+#     '[28/Jul/2006:10:22:04',
+#     '-0300]',
+#     '"GET',
+#     '/',
+#     'HTTP/1.0"',
+#     '200',
+#     '2216'
+#   ]
+# ]
+
+cat logs | pipemill --split \
+    -p 'stdin.map(e => e.split(" "))' \
+    -p 'stdin.map(e => e[0])' \
+    -p '_.uniq(stdin)'
+
+# [ '192.168.2.20', '127.0.0.1' ]
+
+cat logs | pipemill --split \
+    -p 'stdin.map(e => e.split(" "))' \
+    -p 'stdin.map(e => e[0])' \
+    -p '_.uniq(stdin)' \
+    --join
+
+# 192.168.2.20
+# 127.0.0.1
 ```
