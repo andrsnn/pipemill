@@ -1,13 +1,13 @@
 {
   "name": "pipemill",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "description": "All your favorite *nix utilities in JavaScript.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Aidan Anderson <aidan@andrsnn.com>",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "async": "2.0.1",
     "chalk": "2.4.1",
