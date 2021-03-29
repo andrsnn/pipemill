@@ -25,6 +25,29 @@ cat package.json | pipepill -p 'stdin.replace("ISC", "MIT")'
 curl https://jsonplaceholder.typicode.com/todos/1 | pipemill --parse -p 'stdin.userId'
 ```
 
+### Group AWS lambdas by VpcId
+
+```bash
+# aws lambda list-functions output
+# {
+#   "Functions": [
+#       { "FunctionName": "LambdaA", "VpcConfig": { "VpcId": "vpc-12345" } },
+#       { "FunctionName": "LambdaB", "VpcConfig": { "VpcId": "vpc-12345" } },
+#       { "FunctionName": "LambdaC", "VpcConfig": { "VpcId": "vpc-123456" } },
+#   ]
+# }
+
+aws lambda list-functions --region us-east-1 | pipemill --parse -p '_.groupBy(stdin.Functions, "VpcConfig.VpcId")'
+
+# {
+#    "vpc-12345": [
+#         { "FunctionName": "LambdaA", "VpcConfig": { "VpcId": "vpc-12345" } },
+#         { "FunctionName": "LambdaB", "VpcConfig": { "VpcId": "vpc-12345" } }
+#     ],
+#    "vpc-123456": [{ "FunctionName": "LambdaC", "VpcConfig": { "VpcId": "vpc-123456" } }]
+# }
+```
+
 ### Grab file permissions from `ls -l`
 
 ```bash
