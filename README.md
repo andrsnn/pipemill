@@ -163,7 +163,7 @@ cat logs | pipemill --split \
 # 127.0.0.1
 ```
 
-### Get AWS Lambda's grouped by attached layers
+### Get AWS Lambdas grouped by attached layers
 
 ```bash
 aws lambda list-functions --region us-east-1 | pipemill --parse \
