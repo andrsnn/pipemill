@@ -39,6 +39,7 @@ program
 
 var availableSubCommands = getAvailableSubCommands(PATH_TO_SUB_COMMANDS);
 
+// we should deprecate this... its just strange.  we should just expose helper functions to the sandbox for use.  more composable and straightforward.
 Object.keys(availableSubCommands).forEach(function (subCommandName) {
     var subCommand = availableSubCommands[subCommandName];
     var option = `--${subCommand.name} [value]`;
@@ -67,6 +68,8 @@ program.parse(process.argv);
 
 function runPipemill(stdin) {
 
+    var sandboxHelpers = require('./sandbox-helpers');
+
     var pipemillSandboxContext = Object.assign({}, global, {
         async,
         _,
@@ -79,7 +82,8 @@ function runPipemill(stdin) {
 
         stdin,
         stdout: stdin
-    });
+    }, sandboxHelpers);
+
     vm.createContext(pipemillSandboxContext);
 
     pipemill.forEach((command, i) => {
