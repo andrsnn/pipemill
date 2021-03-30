@@ -162,3 +162,28 @@ cat logs | pipemill --split \
 # 192.168.2.20
 # 127.0.0.1
 ```
+
+### Get AWS Lambda's grouped by attached layers
+
+```bash
+aws lambda list-functions --region us-east-1 | pipemill --parse \
+-p 'nestedFor(stdin, "Functions.Layers", layer => {
+        var arn = layer.Arn.split(":");
+        layer.name = arn.slice(arn.length - 2).join(":");
+}); return stdin;' \
+-p '_.groupBy(stdin.Functions, e => _.map(e.Layers, "name").sort().join(","))'
+
+# {
+# 'layerA:92,layerB:32': [
+#     {
+#       FunctionName: 'lambdaA',
+#       FunctionArn: 'arn:aws:lambda:us-east-1:123456789:function:lambdaA',
+#       ...
+#       Environment: [Object],
+#       TracingConfig: [Object],
+#       Layers: [Array],
+#       PackageType: 'Zip'
+#     }
+#   ]
+# }
+```
