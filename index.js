@@ -79,6 +79,7 @@ function runPipemill(stdin) {
         util,
         chalk,
         moment,
+        Buffer,
 
         stdin,
         stdout: stdin

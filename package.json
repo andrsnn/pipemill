@@ -1,6 +1,6 @@
 {
   "name": "pipemill",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "All your favorite *nix utilities in JavaScript.",
   "main": "index.js",
   "scripts": {
