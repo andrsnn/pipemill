@@ -9,7 +9,7 @@
   "author": "Aidan Anderson <aidan@andrsnn.com>",
   "license": "MIT",
   "dependencies": {
-    "async": "2.0.1",
+    "async": "2.6.4",
     "chalk": "2.4.1",
     "commander": "2.9.0",
     "lodash": "^4.17.21",
